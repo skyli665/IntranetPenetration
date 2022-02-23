@@ -1,13 +1,10 @@
 package com.wallnet.ngork.server;
 
 import com.wallnet.ngork.core.Properties;
-import com.wallnet.ngork.core.Text;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-
-import java.util.Map;
 
 public class ClientServer implements Runnable {
 
@@ -26,7 +23,7 @@ public class ClientServer implements Runnable {
                         protected void initChannel(Channel ch) throws Exception {
                             ch.config().setRecvByteBufAllocator(new FixedRecvByteBufAllocator(Integer.MAX_VALUE));
                             ch.pipeline()
-                                    .addLast(new ServerHandler());
+                                    .addLast(new ClientServerHandler());
                         }
                     });
             ChannelFuture f1 = serverBootstrap.bind(Properties.SERVER_REG_PORT);

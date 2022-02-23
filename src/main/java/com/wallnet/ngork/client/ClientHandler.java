@@ -1,56 +1,46 @@
 package com.wallnet.ngork.client;
 
+import com.wallnet.ngork.core.ClientBean;
 import com.wallnet.ngork.core.FormatBytes;
 import com.wallnet.ngork.core.SocketUtils;
-import com.wallnet.ngork.core.Text;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class ClientHandler extends ChannelInboundHandlerAdapter {
-    /**
-     * 发送数据
-     */
-    @Override
-    public void channelActive(ChannelHandlerContext ctx) {
-        System.out.println("连服务器，发送数据");
-        Text text = new Text();
-        text.setMethod("FIND_PORT");
-        //要发送的消息
-        byte[] req = FormatBytes.mywriteMethod(text);
-        //消息包
-        ByteBuf firstMessage = Unpooled.buffer(req.length);
-        //发送
-        firstMessage.writeBytes(req);
-        //刷新
-        ctx.writeAndFlush(firstMessage);
-    }
 
     /**
      * 接收数据
      */
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        System.out.println("client 读取server数据");
+        log.info("client读取server数据");
+        //接收服务端发送的数据
         ByteBuf buf = (ByteBuf) msg;
         ByteBuf resp = null;
         byte[] req = new byte[buf.readableBytes()];
         buf.readBytes(req);
-        Text text = FormatBytes.myreadMethod(req);
-        System.out.println("接受的数据为" + text.toString());
-        switch (text.getMethod()) {
+        ClientBean bean = FormatBytes.read(req);
+        log.info("客户端接收的数据为" + bean.toString());
+        switch (bean.getMethod()) {
+            //代理连接方法
             case "GET": {
-                SocketUtils socket = new SocketUtils();
-                byte[] result = socket.doSocket("10.10.10.2", 6379, text.getContext());
-                text.setContext(result);
-                byte[] bytes = FormatBytes.mywriteMethod(text);
-                System.out.println(bytes.length);
+                log.info("执行GET方法，代理TCP连接");
+                byte[] result =
+                        SocketUtils.doSocket("10.10.10.2", 6379, bean.getBytes()).getBytes();
+                bean.setBytes(result);
+                byte[] bytes = FormatBytes.write(bean);
+                log.info("返回数据长度为[{}]", bytes.length);
                 resp = Unpooled.copiedBuffer(bytes);
                 ctx.writeAndFlush(resp);
                 break;
             }
-            case "FIND_PORT": {
+            //连接建立完成方法
+            case "already": {
+                log.info("服务端确认连接建立");
                 break;
             }
             default:
@@ -70,8 +60,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
      */
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-        System.out.println("发生异常");
-        cause.printStackTrace();
+        log.error("连接发生异常[{}]", cause);
         //释放资源
         ctx.close();
     }

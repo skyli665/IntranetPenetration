@@ -27,7 +27,7 @@ public class WebServer implements Runnable {
                         @Override
                         protected void initChannel(Channel ch) throws Exception {
                             ch.pipeline()
-                                    .addLast(new ServerWebHandler());
+                                    .addLast(new WebServerHandler());
                         }
                     });
             ChannelFuture f1 = serverBootstrap.bind(Properties.SERVER_WEB_PORT);

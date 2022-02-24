@@ -56,7 +56,6 @@ public class ClientServerHandler extends ChannelInboundHandlerAdapter {
 
     @Override
     public void channelReadComplete(ChannelHandlerContext ctx) {
-        log.info("结束");
         ctx.flush();
     }
 

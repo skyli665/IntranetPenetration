@@ -7,6 +7,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
@@ -61,6 +62,7 @@ public class ClientServerHandler extends ChannelInboundHandlerAdapter {
                 log.info("协议方法异常");
             }
         }
+        ReferenceCountUtil.release(msg);
     }
 
     @Override

@@ -39,6 +39,7 @@ public class Client implements Runnable {
                         @Override
                         protected void initChannel(SocketChannel ch) {
                             //注册handler
+                            //配置接收数据缓冲区大小，超出部分无法接收，不要设置过大，linux中会出问题
                             ch.config().setRecvByteBufAllocator(new FixedRecvByteBufAllocator(Integer.MAX_VALUE));
                             ch.pipeline().addLast(new ClientHandler());
                         }

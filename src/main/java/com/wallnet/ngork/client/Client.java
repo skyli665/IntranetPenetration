@@ -1,105 +1,59 @@
 package com.wallnet.ngork.client;
 
-import com.wallnet.ngork.core.ClientBean;
-import com.wallnet.ngork.core.FormatBytes;
 import com.wallnet.ngork.core.Properties;
-import com.wallnet.ngork.core.SocketUtils;
-import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.bootstrap.Bootstrap;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.FixedRecvByteBufAllocator;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
+import java.net.InetSocketAddress;
 
 /**
  * @author skyli665
  */
 @Slf4j
 public class Client implements Runnable {
-    /**
-     * 客户端配置
-     */
-    private ClientBean clientBean;
-
-    /**
-     * 监听指定端口
-     */
-    public Client() {
-        try {
-            this.clientBean = setup();
-        } catch (Exception e) {
-            log.error("初始化配置失败", e);
-        }
-    }
 
     @Override
     public void run() {
-        EventLoopGroup eventLoopGroup = null;
+        EventLoopGroup nioEventLoopGroup = null;
         try {
-            //server引导类
-            ServerBootstrap serverBootstrap = new ServerBootstrap();
-            eventLoopGroup = new NioEventLoopGroup();
-            serverBootstrap.group(eventLoopGroup)
-                    .channel(NioServerSocketChannel.class)
-                    .localAddress("localhost", this.clientBean.getLanPort())
-                    .childHandler(new ChannelInitializer<Channel>() {
+            //客户端引导类
+            Bootstrap bootstrap = new Bootstrap();
+            //处理连接的线程池,事件线程组
+            nioEventLoopGroup = new NioEventLoopGroup();
+            //多线程处理
+            bootstrap.group(nioEventLoopGroup)
+                    //指定通道类型
+                    .channel(NioSocketChannel.class)
+                    //地址
+                    .remoteAddress(new InetSocketAddress(Properties.SERVER_ADDR,
+                            Properties.SERVER_REG_PORT))
+                    //业务处理
+                    .handler(new ChannelInitializer<SocketChannel>() {
                         @Override
-                        protected void initChannel(Channel ch) {
+                        protected void initChannel(SocketChannel ch) {
+                            //注册handler
                             ch.config().setRecvByteBufAllocator(new FixedRecvByteBufAllocator(Integer.MAX_VALUE));
                             ch.pipeline().addLast(new ClientHandler());
                         }
                     });
-            ChannelFuture channelFuture = serverBootstrap.bind().sync();
-            log.info("开始监听，端口为[{}]", channelFuture.channel().localAddress());
-
-            //通知服务端
-            ClientBean res = SocketUtils.doSocket(Properties.SERVER_ADDR,
-                    Properties.SERVER_REG_PORT,
-                    FormatBytes.write(clientBean));
-            clientBean = FormatBytes.read(res.getBytes());
-            if ("ALREADY".equals(clientBean.getMethod())) {
-                log.info("已经建立连接");
-            } else {
-                log.error("连接建立失败，检查网络状态");
-            }
-            //开始服务
+            ChannelFuture channelFuture = bootstrap.connect().sync();
             channelFuture.channel().closeFuture().sync();
-        } catch (Exception e) {
+        } catch (InterruptedException e) {
             e.printStackTrace();
         } finally {
             try {
-                eventLoopGroup.shutdownGracefully().sync();
+                nioEventLoopGroup.shutdownGracefully().sync();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
-
-    /**
-     * 与服务端交互，获取本地配置
-     */
-    public ClientBean setup() throws IOException {
-        /*
-        build过程，主要是通知服务端准备建立连接，并获取客户端的端口信息
-         */
-        log.info("执行build过程");
-        ClientBean clientBean = new ClientBean();
-        clientBean.setMethod("BUILD");
-        ClientBean res = SocketUtils.doSocket(Properties.SERVER_ADDR,
-                Properties.SERVER_REG_PORT,
-                FormatBytes.write(clientBean));
-        //获取网络信息
-        int port = res.getLanPort();
-        String addr = res.getLanAddr();
-        log.info("客户端即将绑定端口[{}]ip地址[{}]", port, addr);
-        clientBean = FormatBytes.read(res.getBytes());
-        clientBean.setLanPort(port);
-        clientBean.setLanAddr(addr);
-        /*
-        ready阶段，打开服务器，并通知服务端可以连接
-         */
-        clientBean.setMethod("READY");
-        return clientBean;
-    }
 }
+

@@ -31,6 +31,10 @@ public class ClientPool {
         return textMap.values().stream().filter(c -> type.equals(c.getType())).collect(Collectors.toList());
     }
 
+    public static void removeClient(String id) {
+        textMap.remove(id);
+    }
+
     /**
      * 替换客户端信息
      */

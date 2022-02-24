@@ -1,6 +1,7 @@
 package com.wallnet.ngork.client;
 
 import com.wallnet.ngork.core.ClientBean;
+import com.wallnet.ngork.core.ClientType;
 import com.wallnet.ngork.core.FormatBytes;
 import com.wallnet.ngork.core.SocketUtils;
 import io.netty.buffer.ByteBuf;
@@ -10,9 +11,29 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
 
 @Slf4j
 public class ClientHandler extends ChannelInboundHandlerAdapter {
+
+    /**
+     * 发送数据
+     */
+    @Override
+    public void channelActive(ChannelHandlerContext ctx) {
+        log.info("连服务器，发送数据");
+        InetSocketAddress socketAddress = (InetSocketAddress) ctx.channel().localAddress();
+        int port = socketAddress.getPort();
+        String address = socketAddress.getAddress().getHostAddress();
+        ClientBean bean = new ClientBean();
+        bean.setMethod("BUILD");
+        bean.setType(ClientType.CLIENT);
+        bean.setLanAddr(address);
+        bean.setLanPort(port);
+        log.info("连服务器，发送数据[{}]...", bean);
+        //写出数据
+        ctx.writeAndFlush(Unpooled.copiedBuffer(FormatBytes.write(bean)));
+    }
 
     /**
      * 接收数据
@@ -41,12 +62,15 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
                 } catch (IOException e) {
                     log.error("网络连接故障", e);
                 }
-                ctx.writeAndFlush(resp);
+                ctx.write(resp);
                 break;
             }
             //连接建立完成方法
-            case "already": {
+            case "BUILD": {
                 log.info("服务端确认连接建立");
+                bean.setMethod("READY");
+                resp = Unpooled.copiedBuffer(FormatBytes.write(bean));
+                ctx.write(resp);
                 break;
             }
             default:

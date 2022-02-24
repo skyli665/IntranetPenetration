@@ -10,6 +10,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 
 @Slf4j
 public class ClientServerHandler extends ChannelInboundHandlerAdapter {
@@ -45,6 +46,14 @@ public class ClientServerHandler extends ChannelInboundHandlerAdapter {
                 bean.setMethod("ALREADY");
                 resp = Unpooled.copiedBuffer(FormatBytes.write(bean));
                 ctx.write(resp);
+                ClientPool.setClient(bean.getChannelId(), bean);
+                break;
+            }
+            case "GET": {
+                //返回读到的数据
+                log.info("客户端返回消息，内容为:[\r\n{}\r\n]", new String(bean.getBytes(),
+                        StandardCharsets.UTF_8));
+                bean.setFlag(true);
                 ClientPool.setClient(bean.getChannelId(), bean);
                 break;
             }

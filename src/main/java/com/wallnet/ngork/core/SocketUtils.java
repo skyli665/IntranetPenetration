@@ -17,7 +17,10 @@ public class SocketUtils {
         ClientBean clientBean = new ClientBean();
         //创建一个socket
         Socket socket = new Socket(host, port);
+        //让端口被释放后可被使用
+        socket.setReuseAddress(true);
         //获取地址信息
+
         InetAddress socketInetAddress = socket.getInetAddress();
         clientBean.setLanAddr(socketInetAddress.getHostAddress());
         clientBean.setLanPort(socket.getLocalPort());

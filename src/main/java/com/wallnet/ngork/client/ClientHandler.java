@@ -9,6 +9,8 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+
 @Slf4j
 public class ClientHandler extends ChannelInboundHandlerAdapter {
 
@@ -16,7 +18,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
      * 接收数据
      */
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+    public void channelRead(ChannelHandlerContext ctx, Object msg) {
         log.info("client读取server数据");
         //接收服务端发送的数据
         ByteBuf buf = (ByteBuf) msg;
@@ -29,12 +31,16 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
             //代理连接方法
             case "GET": {
                 log.info("执行GET方法，代理TCP连接");
-                byte[] result =
-                        SocketUtils.doSocket("10.10.10.2", 6379, bean.getBytes()).getBytes();
-                bean.setBytes(result);
-                byte[] bytes = FormatBytes.write(bean);
-                log.info("返回数据长度为[{}]", bytes.length);
-                resp = Unpooled.copiedBuffer(bytes);
+                try {
+                    byte[] result =
+                            SocketUtils.doSocket("10.10.10.2", 6379, bean.getBytes()).getBytes();
+                    bean.setBytes(result);
+                    byte[] bytes = FormatBytes.write(bean);
+                    log.info("返回数据长度为[{}]", bytes.length);
+                    resp = Unpooled.copiedBuffer(bytes);
+                } catch (IOException e) {
+                    log.error("网络连接故障", e);
+                }
                 ctx.writeAndFlush(resp);
                 break;
             }
@@ -50,8 +56,7 @@ public class ClientHandler extends ChannelInboundHandlerAdapter {
     }
 
     @Override
-    public void channelReadComplete(ChannelHandlerContext ctx)
-            throws Exception {
+    public void channelReadComplete(ChannelHandlerContext ctx) {
         ctx.flush();
     }
 

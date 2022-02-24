@@ -1,23 +1,31 @@
 package com.wallnet.ngork.client;
 
+import com.wallnet.ngork.core.ClientBean;
+import com.wallnet.ngork.core.FormatBytes;
+import com.wallnet.ngork.core.Properties;
+import com.wallnet.ngork.core.SocketUtils;
 import com.wallnet.ngork.server.ClientServerHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * @author skyli665
  */
+@Slf4j
 public class Client implements Runnable {
-
-    private int port;
+    /**
+     * 客户端配置
+     */
+    private ClientBean clientBean;
 
     /**
      * 监听指定端口
      */
-    public Client(int port) {
-        this.port = port;
+    public Client(ClientBean bean) {
+        this.clientBean = bean;
     }
 
     @Override
@@ -37,9 +45,20 @@ public class Client implements Runnable {
                             ch.pipeline().addLast(new ClientHandler());
                         }
                     });
-            ChannelFuture f1 = serverBootstrap.bind(this.port);
+            ChannelFuture f1 = serverBootstrap.bind(this.clientBean.getLanPort());
+            //通知服务端
+            ClientBean res = SocketUtils.doSocket(Properties.SERVER_ADDR,
+                    Properties.SERVER_REG_PORT,
+                    FormatBytes.write(clientBean));
+            clientBean = FormatBytes.read(res.getBytes());
+            if ("ALREADY".equals(clientBean.getMethod())) {
+                log.info("已经建立连接");
+            } else {
+                log.error("连接建立失败，检查网络状态");
+            }
+            //开始服务
             f1.channel().closeFuture().sync();
-        } catch (InterruptedException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         } finally {
             try {

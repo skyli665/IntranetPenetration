@@ -34,17 +34,7 @@ public class ClientRun {
         ready阶段，打开服务器，并通知服务端可以连接
          */
         clientBean.setMethod("READY");
-        new Thread(new Client(port)).start();
-        //通知服务端
-        res = SocketUtils.doSocket(Properties.SERVER_ADDR,
-                Properties.SERVER_REG_PORT,
-                FormatBytes.write(clientBean));
-        clientBean = FormatBytes.read(res.getBytes());
-        if ("ALREADY".equals(clientBean.getMethod())) {
-            log.info("已经建立连接");
-        } else {
-            log.error("连接建立失败，检查网络状态");
-        }
+        new Thread(new Client(clientBean)).start();
     }
 
 }

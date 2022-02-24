@@ -42,7 +42,7 @@ public class Client implements Runnable {
             eventLoopGroup = new NioEventLoopGroup();
             serverBootstrap.group(eventLoopGroup)
                     .channel(NioServerSocketChannel.class)
-                    .option(ChannelOption.SO_KEEPALIVE, true)
+                    .localAddress("localhost", this.clientBean.getLanPort())
                     .childHandler(new ChannelInitializer<Channel>() {
                         @Override
                         protected void initChannel(Channel ch) {
@@ -50,7 +50,9 @@ public class Client implements Runnable {
                             ch.pipeline().addLast(new ClientHandler());
                         }
                     });
-            ChannelFuture f1 = serverBootstrap.bind(this.clientBean.getLanPort());
+            ChannelFuture channelFuture = serverBootstrap.bind().sync();
+            log.info("开始监听，端口为[{}]", channelFuture.channel().localAddress());
+
             //通知服务端
             ClientBean res = SocketUtils.doSocket(Properties.SERVER_ADDR,
                     Properties.SERVER_REG_PORT,
@@ -62,7 +64,7 @@ public class Client implements Runnable {
                 log.error("连接建立失败，检查网络状态");
             }
             //开始服务
-            f1.channel().closeFuture().sync();
+            channelFuture.channel().closeFuture().sync();
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
